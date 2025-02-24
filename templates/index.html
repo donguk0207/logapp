@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block main_area %}
+<div class="container mt-4">
+    <h1>로그 생성</h1>
+
+    <!-- 로그 목록 테이블 -->
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>타임스탬프</th>
+                <th>출발지 IP</th>
+                <th>목적지 IP</th>
+                <th>프로토콜</th>
+                <th>입력 바이트</th>
+                <th>출력 바이트</th>
+                <th>입력 패킷</th>
+                <th>출력 패킷</th>
+                <th>호스트</th>
+            </tr>
+        </thead>
+        <tbody id="log-table-body">
+            {% for log in logs %}
+                <tr>
+                    <td>{{ log.timestamp }}</td>
+                    <td>{{ log.src_ip }}</td>
+                    <td>{{ log.dst_ip }}</td>
+                    <td>{{ log.protocol }}</td>
+                    <td>{{ log.bytes_in }}</td>
+                    <td>{{ log.bytes_out }}</td>
+                    <td>{{ log.packets_in }}</td>
+                    <td>{{ log.packets_out }}</td>
+                    <td>{{ log.host }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- 로그 생성 버튼 -->
+    <button id="generate-log-btn" class="btn btn-primary">새로운 로그 생성</button>
+</div>
+
+<!-- JavaScript (AJAX 요청) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // 로그 생성 버튼 클릭 이벤트
+        $('#generate-log-btn').on('click', function() {
+            $.ajax({
+                url: "{% url 'generate_log_ajax' %}",
+                method: "GET",
+                success: function(data) {
+                    // 새로운 로그 항목을 테이블에 추가
+                    $('#log-table-body').prepend(
+                        `<tr>
+                            <td>${data.timestamp}</td>
+                            <td>${data.src_ip}</td>
+                            <td>${data.dst_ip}</td>
+                            <td>${data.protocol}</td>
+                            <td>${data.bytes_in}</td>
+                            <td>${data.bytes_out}</td>
+                            <td>${data.packets_in}</td>
+                            <td>${data.packets_out}</td>
+                            <td>${data.host}</td>
+                        </tr>`
+                    );
+                },
+                error: function() {
+                    alert("로그 생성에 실패했습니다.");
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
