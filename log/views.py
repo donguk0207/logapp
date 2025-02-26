@@ -2,7 +2,13 @@ from django.shortcuts import render
 import datetime
 import json
 import random
+import os
 from django.db import connection
+from log.models import log_data
+from config import settings as st
+import pymysql
+import mysql.connector
+
 
 # Create your views here.
 def get_log(key):
@@ -59,7 +65,7 @@ def get_log(key):
     return events.get(key, "out of bound")
 
 def index(request):
-    return render(request, "index.html")
+    return render(request, "log_index.html")
 
 def gen_i(request):
     return render(request, "geni.html")
@@ -121,7 +127,73 @@ def btn_geni_click(request, product_id):
     return render(request, "geni.html")
 
 def gen_ii(request):
-    return render(request, "genii.html")
+    # SAAS Service Log 
+    if request.method == "GET":
+        return render(request, "genii.html")
+
+    # 현재 날짜 및 시간
+    current_time = datetime.datetime.now()
+    time = current_time.strftime("%Y-%m-%d %H:%M:%S")
+    user_id = request.POST.get("userid")
+    servicemenu = request.POST.get("servicemenu")
+    stars = request.POST.get("stars")
+    access_type = request.POST.get("accesstype")
+    reserv = request.POST.get("reserv")
+
+    form_data = {
+        "time": time,
+        "user_id": user_id,
+        "state": servicemenu,
+        "stars": stars,
+        "access_type": access_type,
+        "reserv": reserv,
+    }
+
+    if st.env("USE_AWS_DB") == "True":
+        db_config = {
+            'host': st.env("AWS_DB_HOST"),
+            'user': st.env("AWS_DB_USER"),
+            'password': st.env("AWS_DB_PASSWORD"),
+            'database': st.env("AWS_DB_NAME"),  # mysql.connector 사용 시 'database' 키 사용
+        }
+
+        try:
+            conn = mysql.connector.connect(**db_config)
+            cursor = conn.cursor()
+
+            sql = '''
+            INSERT INTO saas_log(time, user_id, servicemenu, stars, access_type, reserve)
+            VALUES(%s, %s, %s, %s, %s, %s)
+            '''
+            data = (time, user_id, servicemenu, stars, access_type, reserv)
+
+            cursor.execute(sql, data)
+            conn.commit()
+            print(f'{cursor.rowcount} record inserted.')
+
+        except Exception as e:
+            print("Error occurred:", e)
+            conn.rollback()
+
+        finally:
+            cursor.close()
+            conn.close()
+
+        return render(request, "genii.html", {"message": "AWS DB에 로그 저장 완료!", "form_data": form_data})
+
+    else:
+        saas_log(
+            time=time,
+            user_id=user_id,
+            servicemenu=servicemenu,
+            stars=stars,
+            access_type=access_type,
+            reserve=reserv,
+        ).save()
+
+        print(form_data)
+        return render(request, "genii.html", {"message": "로컬 DB에 로그 저장 완료!", "form_data": form_data})
+
 
 def gen_iii(request):
     return render(request, "geniii.html")
